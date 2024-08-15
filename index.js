@@ -26,7 +26,7 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
-// const userCollections = client.db('shopMaster').collection('users');
+const userCollections = client.db('shopMaster').collection('users');
 const productCollections = client.db('shopMaster').collection('products');
 
 async function run() {
@@ -41,7 +41,7 @@ async function run() {
         app.post('/register', async (req, res) => {
             const user = req.body;
             const query = { email: user?.email }
-            const userAlreadyExists = await userCollections.find(query);
+            const userAlreadyExists = userCollections.find(query);
 
             if (userAlreadyExists) {
                 return res.send({ message: 'user already exist', insertedIn: null })
@@ -53,8 +53,21 @@ async function run() {
         // products apis
         app.get('/products', async (req, res) => {
             console.log('products api hit');
-            const result = await productCollections.find().toArray();
-            return res.send(result);
+
+            const query = req.query;
+            const page = parseFloat(req.query.page);
+            const size = parseFloat(req.query.size);
+            console.log(query);
+            const result = await productCollections.find()
+                .skip(page * size)
+                .limit(size)
+                .toArray();
+            const count = await productCollections.estimatedDocumentCount();
+            console.log(result);
+            console.log(count);
+
+            // const result = await productCollections.find().toArray();
+            return res.send({ result, count });
         });
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
