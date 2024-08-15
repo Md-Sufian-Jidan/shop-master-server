@@ -1,8 +1,8 @@
 const express = require('express');
 const app = express();
+const { MongoClient, ServerApiVersion } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
 const port = process.env.PORT || 5000;
 
 
@@ -16,7 +16,7 @@ const corsOptions = {
 app.use(express.json());
 app.use(cors(corsOptions));
 
-const uri = process.env.MONGODB_URI;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.qvjjrvn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -26,46 +26,33 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+// const userCollections = client.db('shopMaster').collection('users');
+const productCollections = client.db('shopMaster').collection('products');
 
 async function run() {
     try {
+
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-
-        const userCollections = client.db('shopMaster').collection('users');
-        const productCollections = client.db('shopMaster').collection('products');
-
-
-        // // jwt related api
-        // app.post('/jwt', async (req, res) => {
-        //     const user = req.body;
-        //     const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '7d' });
-        //     res.send({ token });
-        // });
+        // await client.db("admin").command({ ping: 1 });
 
         // authentication apis
         app.post('/register', async (req, res) => {
             const user = req.body;
-            const userAlreadyExists = await userCollections.find({ email: user?.email });
+            const query = { email: user?.email }
+            const userAlreadyExists = await userCollections.find(query);
 
             if (userAlreadyExists) {
-                return res.json({
-                    success: false,
-                    error: 'User already Exists',
-                });
+                return res.send({ message: 'user already exist', insertedIn: null })
             }
             const result = await userCollections.insertOne(user);
-            return res.json({
-                success: true,
-                message: 'User Created Successfully',
-                data: result,
-            })
+            return res.send(result);
         });
 
         // products apis
         app.get('/products', async (req, res) => {
+            console.log('products api hit');
             const result = await productCollections.find().toArray();
             return res.send(result);
         });
@@ -73,7 +60,7 @@ async function run() {
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
-        await client.close();
+        // await client.close();
     }
 }
 run().catch(console.dir);
