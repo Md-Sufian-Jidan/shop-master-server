@@ -63,11 +63,23 @@ async function run() {
                 .limit(size)
                 .toArray();
             const count = await productCollections.estimatedDocumentCount();
-            console.log(result);
-            console.log(count);
+            // console.log(result);
+            // console.log(count);
 
             // const result = await productCollections.find().toArray();
             return res.send({ result, count });
+        });
+
+        // get all queries api 
+        app.get('/queries', async (req, res) => {
+            const search = req.query.search || "";
+            let query = {
+                product_name: {
+                    $regex: search, $options: 'i'
+                }
+            }
+            const result = await productCollections.find(query).toArray();
+            res.send(result);
         });
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
