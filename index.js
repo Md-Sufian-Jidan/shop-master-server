@@ -28,6 +28,7 @@ const client = new MongoClient(uri, {
 });
 const userCollections = client.db('shopMaster').collection('users');
 const productCollections = client.db('shopMaster').collection('products');
+const brand_category_Collections = client.db('shopMaster').collection('brand_category');
 
 async function run() {
     try {
@@ -70,7 +71,7 @@ async function run() {
             return res.send({ result, count });
         });
 
-        // get all queries api 
+        // get products by search api 
         app.get('/queries', async (req, res) => {
             const search = req.query.search || "";
             let query = {
@@ -81,6 +82,57 @@ async function run() {
             const result = await productCollections.find(query).toArray();
             res.send(result);
         });
+
+        // get brands and categories api
+        app.get('/brands_category', async (req, res) => {
+            const result = await brand_category_Collections.find().toArray();
+            return res.send(result);
+        });
+
+        // categorization api
+        app.get('/categorization', async (req, res) => {
+
+            // const mostlyBooked = await productCollections.find({}, {
+            //     projection: {
+            //         mostBooked: 1,
+            //         price: 1,
+            //         testCategory: 1,
+            //     },
+            // },
+            // ).toArray();
+            try {
+                const { brand, category, minPrice, maxPrice } = req.query;
+
+                let filter = {};
+
+                if (brand) {
+                    filter.brand_name = brand;
+                }
+
+                if (category) {
+                    filter.product_category = category;
+                }
+
+                if (minPrice || maxPrice) {
+                    filter.product_price = {};
+                    if (minPrice) filter.product_price.$gte = parseFloat(minPrice);
+                    if (maxPrice) filter.product_price.$lte = parseFloat(maxPrice);
+                }
+
+                console.log(filter);
+
+                const products = await productCollections.find(filter).toArray();
+                const count = products.estimatedDocumentCount();
+                return res.send({ products, count });
+            } catch (err) {
+                res.status(500).json({ error: err.message });
+            }
+
+            const brand = req.query.brand;
+            const query = { brand_name: brand };
+            const result = await productCollections.find(query).toArray();
+            return res.send(result)
+        })
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
