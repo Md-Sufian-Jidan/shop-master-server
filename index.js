@@ -8,7 +8,7 @@ const port = process.env.PORT || 5000;
 
 //middlewares
 const corsOptions = {
-    origin: ["http://localhost:5173",],
+    origin: ["http://localhost:5173", 'https://shopmaster-ea00f.web.app'],
     credentials: true,
     optionSuccessStatus: 200
 };
@@ -40,6 +40,12 @@ async function run() {
 
         // authentication apis
         app.post('/register', async (req, res) => {
+            const user = req.body;
+            const result = await userCollections.insertOne(user);
+            return res.send(result);
+        });
+        // login api
+        app.post('/login', async (req, res) => {
             const user = req.body;
             const query = { email: user?.email }
             const userAlreadyExists = userCollections.find(query);
@@ -91,15 +97,6 @@ async function run() {
 
         // categorization api
         app.get('/categorization', async (req, res) => {
-
-            // const mostlyBooked = await productCollections.find({}, {
-            //     projection: {
-            //         mostBooked: 1,
-            //         price: 1,
-            //         testCategory: 1,
-            //     },
-            // },
-            // ).toArray();
             try {
                 const { brand, category, minPrice, maxPrice } = req.query;
 
@@ -107,23 +104,33 @@ async function run() {
 
                 if (brand) {
                     filter.brand_name = brand;
+                    const products = await productCollections.find(filter).toArray();
+                    // const count = products.estimatedDocumentCount();
+                    return res.send(products);
                 }
 
                 if (category) {
                     filter.product_category = category;
+                    const products = await productCollections.find(filter).toArray();
+                    // const count = products.estimatedDocumentCount();
+                    return res.send(products);
                 }
 
-                if (minPrice || maxPrice) {
+                if (maxPrice) {
+                    filter.product_price = {};
+                    if (maxPrice) filter.product_price.$lte = parseFloat(maxPrice);
+                    const products = await productCollections.find(filter).toArray();
+                    return res.send(products);
+                }
+                if (minPrice) {
                     filter.product_price = {};
                     if (minPrice) filter.product_price.$gte = parseFloat(minPrice);
-                    if (maxPrice) filter.product_price.$lte = parseFloat(maxPrice);
+                    const products = await productCollections.find(filter).toArray();
+                    return res.send(products);
                 }
-
-                console.log(filter);
-
                 const products = await productCollections.find(filter).toArray();
-                const count = products.estimatedDocumentCount();
-                return res.send({ products, count });
+                return res.send(products);
+                // const count = products.estimatedDocumentCount();
             } catch (err) {
                 res.status(500).json({ error: err.message });
             }
