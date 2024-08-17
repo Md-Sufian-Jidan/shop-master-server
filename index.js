@@ -70,10 +70,6 @@ async function run() {
                 .limit(size)
                 .toArray();
             const count = await productCollections.estimatedDocumentCount();
-            // console.log(result);
-            // console.log(count);
-
-            // const result = await productCollections.find().toArray();
             return res.send({ result, count });
         });
 
@@ -98,48 +94,71 @@ async function run() {
         // categorization api
         app.get('/categorization', async (req, res) => {
             try {
-                const { brand, category, minPrice, maxPrice } = req.query;
-
+                const { category, brand } = req.query;
                 let filter = {};
-
-                if (brand) {
-                    filter.brand_name = brand;
-                    const products = await productCollections.find(filter).toArray();
-                    // const count = products.estimatedDocumentCount();
-                    return res.send(products);
-                }
-
                 if (category) {
                     filter.product_category = category;
                     const products = await productCollections.find(filter).toArray();
-                    // const count = products.estimatedDocumentCount();
                     return res.send(products);
                 }
-
-                if (maxPrice) {
-                    filter.product_price = {};
-                    if (maxPrice) filter.product_price.$lte = parseFloat(maxPrice);
-                    const products = await productCollections.find(filter).toArray();
-                    return res.send(products);
-                }
-                if (minPrice) {
-                    filter.product_price = {};
-                    if (minPrice) filter.product_price.$gte = parseFloat(minPrice);
+                if (brand) {
+                    filter.brand_name = brand;
                     const products = await productCollections.find(filter).toArray();
                     return res.send(products);
                 }
                 const products = await productCollections.find(filter).toArray();
                 return res.send(products);
-                // const count = products.estimatedDocumentCount();
             } catch (err) {
-                res.status(500).json({ error: err.message });
+                res.json({
+                    success: false,
+                    error: 'something went wrong in the server',
+                    status: 500,
+                })
+            }
+        });
+        // sort by minPrice maxPrice 
+        app.get('/price', async (req, res) => {
+            const { minPrice, maxPrice } = req.query;
+            // Build the filter object
+            let priceFilter = {};
+            // Apply minimum price filter
+            if (minPrice !== undefined) {
+                priceFilter.$gte = parseFloat(minPrice);
+            }
+            // Apply maximum price filter
+            if (maxPrice !== undefined) {
+                priceFilter.$lte = parseFloat(maxPrice);
+            }
+            // If priceFilter is not empty, add it to the main filter object
+            let filter = {};
+            if (Object.keys(priceFilter).length > 0) {
+                filter.product_price = priceFilter;
+            }
+            try {
+                // Find products based on the filter
+                const result = await Product.find(filter).toArray();
+
+                // Send the filtered products back to the client
+                console.log(result);
+                return res.send(result);
+            } catch (error) {
+                return res.status(500).json({ message: error.message });
             }
 
-            const brand = req.query.brand;
-            const query = { brand_name: brand };
-            const result = await productCollections.find(query).toArray();
-            return res.send(result)
-        })
+            // const parseMinPrice = parseFloat(req.query.minPrice);
+            // const parseMaxPrice = parseFloat(req.query.maxPrice);
+            // if (parseMaxPrice && parseMinPrice) {
+            //     const result = await productCollections.find({
+            //         product_price: {
+            //             $gte: parseMinPrice,
+            //             $lte: parseMaxPrice,
+            //         }
+            //     });
+            //     return res.send(result);
+            // }
+            // const result = await productCollections.find({ product_price: { $gte: parseMinPrice } }).toArray();
+            // return res.send(result);
+        });
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
